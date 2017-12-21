@@ -5,436 +5,479 @@
 #ifndef COP3530_PROJECT_1_SDAL_H
 #define COP3530_PROJECT_1_SDAL_H
 
-#include "ADT_List.h"
+#include "List.h"
 #include <stdexcept>
 #include <iostream>
 using namespace std;
 
 namespace cop3530{
-template<class T>
-class SDAL: public ADT_LIST<T>{
-private:
-
-    T* arr;
-    size_t head = 0;
-    size_t tail = 0;
-    size_t end_index;
-
-    size_t next_index(size_t x){
-        if(x == this->end_index){
-            return 0;
-        }
-        return x + 1;
-    }
-
-    size_t prev_index(size_t x){
-        if(x == 0){
-            return this->end_index;
-        }
-        return x - 1;
-    }
-public:
-    template<class DataT>
-    class SDAL_Iter: public  std::iterator<std::forward_iterator_tag,DataT>{
-    public:
-
-        typedef DataT value_type;
-        typedef std::ptrdiff_t difference_type;
-        typedef DataT& reference;
-        typedef DataT* pointer;
-        typedef std::forward_iterator_tag iterator_category;
-
-        typedef SDAL_Iter self_type;
-        typedef SDAL_Iter& self_reference;
-
+    template<class T>
+    class SDAL: public List<T>{
     private:
-        size_t here;
-        size_t tail;
-        size_t edge;
-        T* list;
+
+        T* arr;
+        size_t tail = 0;
+        size_t end_index;
+        size_t original_capacity = 50;
 
     public:
-        explicit SDAL_Iter(T* list, size_t begin, size_t end, size_t edge) {
-            this->list = list;
-            here = begin;
-            tail = end;
-            this->edge = edge;
+            template<class DataT>
+            class SDAL_Iter: public  std::iterator<std::forward_iterator_tag,DataT>{
+            public:
+
+                typedef DataT value_type;
+                typedef std::ptrdiff_t difference_type;
+                typedef DataT& reference;
+                typedef DataT* pointer;
+                typedef std::forward_iterator_tag iterator_category;
+
+                typedef SDAL_Iter self_type;
+                typedef SDAL_Iter& self_reference;
+
+            private:
+                size_t here;
+                size_t tail;
+                T* list;
+
+            public:
+                explicit SDAL_Iter(T* list, size_t begin, size_t end) {
+                    this->list = list;
+                    here = begin;
+                    tail = end;
+                }
+                SDAL_Iter(const SDAL_Iter& src) {
+                    list = src.list;
+                    here = src.here;
+                    tail = src.tail;
+                }
+
+                reference operator*() const {
+                    if (here == tail) {
+                        throw std::runtime_error("Can't evaluate (*) at null location!");
+                    }
+                    return list[here];
+                }
+
+                pointer operator->() const {
+                    if (here == tail) {
+                        throw std::runtime_error("Can't use -> operator with a null position");
+                    }
+                    return &(operator*());
+                }
+
+                self_reference operator=(SDAL_Iter<DataT>const& src) {
+                    if(this == &src){
+                        return *this;
+                    }
+                    here = src.here;
+                    tail = src.tail;
+                    list = src.list;
+                    return *this;
+                }
+
+                self_reference operator++() {
+                    if (here == tail) {
+                        throw std::runtime_error("Can't use ++(pre) operator at null position");
+                    }
+                    here++;
+                    return *this;
+                }
+
+                self_type operator++(int) {
+                    if (here == tail) {
+                        throw std::runtime_error("Can't use ++(post) operator with a null position");
+                    }
+                    SDAL_Iter<DataT> hold(*this);
+                    here++;
+                    return hold;
+                }
+
+                bool operator==(SDAL_Iter<DataT>const& test) const {
+                    return (here == test.here && list == test.list) ;
+                }
+
+                bool operator!=(SDAL_Iter<DataT>const& test) const {
+                    return (here != test.here || list != test.list);
+                }
+            };
+
+        //typedef std::size_t size_t;
+        typedef T value_type;
+        typedef SDAL_Iter<T> iterator;
+        typedef SDAL_Iter<T const> const_iterator;
+
+        iterator begin(){
+            return iterator(arr,0,tail);
         }
-        SDAL_Iter(const SDAL_Iter& src) {
-            this->list = src.list;
-            here = src.here;
+        iterator end(){
+            return iterator(arr,tail,tail);
+        }
+
+        const_iterator begin() const{
+            return const_iterator(arr,0, tail);
+        }
+
+        const_iterator end() const{
+            return const_iterator(arr,tail, tail);
+        }
+
+        iterator grab(SDAL_Iter<T>& src){
+            return iterator(src);
+        }
+
+        SDAL(size_t capacity = 50){
+
+            this->end_index = capacity-1;
+            this->arr = new T[capacity];
+            this->original_capacity = capacity;
+            cout << "Created a Simple Dynamic ArrayList!!!" << endl;
+
+        }
+
+        SDAL(const SDAL & src){
             tail = src.tail;
-            edge = src.edge;
-        }
+            end_index = src.end_index;
+            original_capacity = src.original_capacity;
+            this->arr = new T[end_index+1];
 
-        reference operator*() const {
-            if (here == tail) {
-                throw std::logic_error("Can't evaluate at null location!");
+            for(size_t i = 0; i < src.length(); i++){
+                arr[i] = src.arr[i];
             }
-            return list[here];
+
+            cout << "Created a Simple Dynamic ArrayList (Copy CTR)!!!" << endl;
         }
 
-        pointer operator->() const {
-            if (here == tail) {
-                throw std::logic_error("Can't use -> operator with a null position");
-            }
-            return &(operator*());
+        SDAL(SDAL&& src){
+
+            tail = src.tail;
+            end_index = src.end_index;
+            original_capacity = src.original_capacity;
+            this->arr = src.arr;
+
+            src.arr = nullptr;
+
+            src.tail = src.end_index = src.original_capacity = 0;
+
+            cout << "Created a Simple Dynamic ArrayList (Move CTR)!!!" << endl;
         }
 
-        self_reference operator=(SDAL_Iter<DataT>const& src) {
-            if(*this == src){
+        ~SDAL(){
+            delete [] this->arr;
+            this->tail = this->end_index = 0;
+            cout << "Destroying Simple Dynamic ArrayList!!!" << endl;
+        }
+
+        SDAL& operator=(const SDAL& src){
+            if(this == &src){
                 return *this;
             }
-            here = src.here;
+
+            clear();
+
             tail = src.tail;
-            list = src.list;
-            edge = src.edge;
+            end_index = src.end_index;
+            delete [] this->arr;
+            this->arr = new T[end_index+1];
+
+            for(size_t i = 0; i < src.length(); i++){
+                arr[i] = src.arr[i];
+            }
+
             return *this;
         }
 
-        self_reference operator++() {
-            if (here == tail) {
-                throw std::logic_error("Can't use ++(pre) operator at null position");
+        SDAL& operator=(SDAL&& src){
+            if(this == &src){
+                return *this;
             }
-            here = (here == edge) ? 0 : here + 1;
+
+            clear();
+
+            tail = src.tail;
+            end_index = src.end_index;
+            delete [] this->arr;
+            this->arr = src.arr;
+
+            src.arr = nullptr;
+
+            src.tail = src.end_index = src.original_capacity = 0;
+
             return *this;
         }
 
-        self_type operator++(int) {
-            if (here == tail) {
-                throw std::logic_error("Can't use ++(post) operator with a null position");
+        T const& operator[](size_t position) const {
+            if (position < 0 || position >= length()) {
+                throw std::out_of_range("Array index out of bounds!");
             }
-            SDAL_Iter<DataT> hold(*this);
-            here = (here == edge) ? 0 : here + 1;
-            return hold;
+
+
+            return this->arr[position];
         }
 
-        bool operator==(SDAL_Iter<DataT>const& test) const {
-            return (here == test.here && list == test.list) ;
+        T& operator[](size_t position){
+            if (position < 0 || position >= length()) {
+                throw std::out_of_range("Array index out of bounds!");
+            }
+
+            return this->arr[position];
         }
 
-        bool operator!=(SDAL_Iter<DataT>const& test) const {
-            return (here != test.here || list != test.list);
+        size_t length() const{
+            return this->tail;
         }
-    };
 
-    typedef std::size_t size_t;
-    typedef T value_type;
-    typedef SDAL_Iter<T> iterator;
-    typedef SDAL_Iter<T const> const_iterator;
-
-    iterator begin(){
-        return iterator(arr,head,tail,end_index);
-    }
-    iterator end(){
-        return iterator(arr,tail,tail,end_index);
-    }
-
-    const_iterator begin() const{
-        return const_iterator(arr,head, tail,end_index);
-    }
-
-    const_iterator end() const{
-        return const_iterator(arr,tail, tail,end_index);
-    }
-
-    iterator grab(SDAL_Iter<T>& src){
-        return iterator(src);
-    }
-    SDAL(size_t capacity = 50){
-
-        this->end_index = capacity;
-        this->arr = new T[capacity+1];
-        cout << "Created a Simple Dynamic ArrayList!!!" << endl;
-
-    }
-
-    ~SDAL(){
-        delete [] this->arr;
-        this->head = this->tail = this->end_index = 0;
-        cout << "Destroying Simple Dynamic ArrayList!!!" << endl;
-    }
-
-    size_t length(){
-        if(this->head == this->tail)
-            return 0;
-        else if(this->head < this->tail){
-            return this->tail - this->head;
+        bool reached_capacity()const{
+            return (this->tail > this->end_index);
         }
-        else{
-            return ((this->end_index+1) - this->head + this->tail);
+
+        bool is_full()const{
+            size_t curr_arr_length = this->end_index + 1;
+            T* test = new(std::nothrow) T[2*curr_arr_length];
+            if(!test)
+                return true;
+
+            delete [] test;
+            return false;
         }
-    }
 
-    bool reached_capacity(){
-        return (next_index(this->tail) == this->head);
-    }
+        bool is_empty()const{
+            return (this->tail == 0);
+        }
 
-    bool is_full(){
-        size_t curr_arr_length = this->end_index + 1;
-        T* test = new(std::nothrow) T[2*curr_arr_length];
-        if(!test)
-            return true;
-
-        delete [] test;
-        return false;
-    }
-
-    bool is_empty(){
-        return (this->head == this->tail);
-    }
-
-    void clear(){
-        delete [] this->arr;
-        this->arr = new T[this->end_index+1];
-        this->head = this->tail = 0;
-        return;
-    }
-
-    void print(ostream& stream){
-        if(length() == 0){
-            stream << "<empty list>" << endl;
+        void clear(){
+            delete [] this->arr;
+            this->arr = new T[this->end_index+1];
+            this->tail = 0;
             return;
         }
 
-        stream << "[";
-
-        for(size_t i = this->head; i != this->tail; i= next_index(i)){
-            if(next_index(i) == this->tail){
-                cout << this->arr[i] << "]" << endl;
-                continue;
+        std::ostream& print(std::ostream& stream)const{
+            if(length() == 0){
+                stream << "<empty list>";
+                return stream;
             }
 
-            cout << this->arr[i] << ", ";
-        }
-        return;
-    }
+            stream << "[";
 
-    T peek_back(){
-        if(is_empty()){
-            throw std::runtime_error("Can't peek at back since SDAL is empty!");
-        }
-        return this->arr[prev_index(this->tail)];
-    }
+            for(size_t i = 0; i < length(); i++){
+                if(i+1 == this->tail){
+                    stream << this->arr[i] << "]";
+                    continue;
+                }
 
-    T peek_front(){
-        if(is_empty()){
-            throw std::runtime_error("Can't peek at front since SDAL is empty!");
+                stream << this->arr[i] << ",";
+            }
+            return stream;
         }
-        return this->arr[this->head];
-    }
 
-    T pop_back(){
-        if(is_empty()){
-            throw std::runtime_error("Can't pop at back since SDAL is empty!");
+        T& peek_back()const{
+            if(is_empty()){
+                throw std::runtime_error("Can't peek at back since SDAL is empty!");
+            }
+            return this->arr[tail-1];
         }
-        this->tail = prev_index(this->tail);
-        return this->arr[this->tail];
-    }
 
-    T pop_front(){
-        if(is_empty()){
-            throw std::runtime_error("Can't peek at front since SDAL is empty!");
+        T& peek_front()const{
+            if(is_empty()){
+                throw std::runtime_error("Can't peek at front since SDAL is empty!");
+            }
+            return this->arr[0];
         }
-        T result = this->arr[this->head];
-        this->head = next_index(this->head);
-        return result;
-    }
 
-    void push_front(T item){
-        if(reached_capacity()){
+        T pop_back(){
+            if(is_empty()){
+                throw std::runtime_error("Can't pop at back since SDAL is empty!");
+            }
+            return this->arr[--this->tail];
+        }
+
+        T pop_front(){
+            if(is_empty()){
+                throw std::runtime_error("Can't pop at front since SDAL is empty!");
+            }
+            T result = this->arr[0];
+            tail--;
+            for(size_t i = 0; i < (tail); i++){
+                this->arr[i] = this->arr[i+1];
+            }
+
+            return result;
+        }
+
+        void push_front(const T& item){
+            if(reached_capacity()){
+                if(is_full()){
+                    throw std::runtime_error("Can't push at front since SDAL is full!");
+                }
+                size_t curr_arr_length = this->end_index + 1;
+                T* new_arr = new T[2*curr_arr_length];
+
+                for(size_t i = 0; i < length(); i++){
+                    new_arr[i+1] = arr[i];
+                }
+                T* temp_arr = arr;
+                this->arr = new_arr;
+                delete temp_arr;
+                arr[0] = item;
+                this->tail = curr_arr_length+1;
+                this->end_index = 2*curr_arr_length-1;
+                return;
+            }
+
+            for(int i = static_cast<int>(tail); i > 0; i--){
+                arr[i] = arr[i-1];
+            }
+            this->arr[0] = item;
+            this->tail++;
+            return;
+        }
+
+        void push_back(const T& item){
+            if(reached_capacity()){
+                if(is_full()) {
+                    throw std::runtime_error("Can't push at back since SDAL is full!");
+                }
+                size_t curr_arr_length = this->end_index + 1;
+                T* new_arr = new T[2*curr_arr_length];
+
+                for(size_t i = 0; i < length(); i++){
+                    new_arr[i] = arr[i];
+                }
+                T* temp_arr = arr;
+                this->arr = new_arr;
+                delete temp_arr;
+                this->tail = curr_arr_length;
+                this->arr[this->tail] = item;
+                this->end_index = 2*curr_arr_length-1;
+                this->tail++;
+                return;
+            }
+            this->arr[this->tail++] = item;
+            return;
+        }
+
+        T& item_at(size_t position)const{
+            if(position < 0 || position >= length()){
+                throw std::runtime_error("Invalid input for position in T SDAL::item_at(size_t position)!");
+            }
+            if(position == 0){
+                return peek_front();
+            }
+            if(position == (length()-1)){
+                return peek_back();
+            }
+
+            return arr[position];
+        }
+
+        T* contents()const{
+
+            T* result = new T[length()];
+
+            for(size_t i = 0; i < tail; i++){
+                result[i] = arr[i];
+            }
+
+            return result;
+        }
+
+        T remove(size_t position){
+            if(position < 0 || position >= length()){
+                throw std::runtime_error("Invalid input for position in T SDAL:remove(size_t position)!");
+            }
+
+            if(position == 0){
+                return pop_front();
+            }
+            if((position + 1) == length()){
+                return pop_back();
+            }
+
+            T result = arr[position];
+
+            for(size_t i = position; i < (tail-1); i++){
+                arr[i] = arr[i+1];
+            }
+
+            tail--;
+
+            return result;
+        }
+
+        bool contains(const T& element, bool (*fxn)(const T&,const T&))const{
+            for(size_t i = 0; i < tail; i++){
+                if(fxn(element,arr[i]))
+                    return true;
+            }
+            return false;
+        }
+
+        void insert(const T& element, size_t position){
             if(is_full()){
                 throw std::runtime_error("Can't push at front since SDAL is full!");
             }
-            size_t curr_arr_length = this->end_index + 1;
-            T* new_arr = new T[2*curr_arr_length];
-
-            for(size_t i = 0, j = this->head; j != this->tail; i++,j = next_index(j)){
-                new_arr[i+1] = arr[j];
+            if(position < 0 || position >= (length()+1)){
+                throw std::runtime_error("Invalid input for position in void SDAL:insert(T element,size_t position)!");
             }
-            this->arr = new_arr;
-            this->head = 0;
-            arr[this->head] = item;
-            this->tail = curr_arr_length;
-            this->end_index = 2*curr_arr_length-1;
+            if(position == 0){
+                push_front(element);
+                return;
+            }
+            if(position == length()){
+                push_back(element);
+                return;
+            }
+
+            if(reached_capacity()){
+                size_t curr_arr_length = this->tail;
+
+                T* new_arr = new T[2*curr_arr_length];
+
+                for(size_t i = 0; i < length(); i++){
+                    new_arr[i] = arr[i];
+                }
+                T* temp_array = arr;
+                this->arr = new_arr;
+                delete temp_array;
+                this->end_index = 2*curr_arr_length-1;
+            }
+
+
+            T saveThis = arr[position];
+            arr[position] = element;
+
+            size_t temp_back = (this->tail);
+            while(temp_back != (position)){
+                temp_back--;
+                if(temp_back == position){
+                    arr[temp_back+1] = saveThis;
+                }
+                else{
+                    arr[temp_back+1] = arr[(temp_back)];
+                }
+
+            }
+
+            this->tail++;
+
             return;
         }
 
-        this->head = prev_index(this->head);
-        this->arr[this->head] = item;
-        return;
-    }
-
-    void push_back(T item){
-        if(reached_capacity()){
-            if(is_full()) {
-                throw std::runtime_error("Can't push at back since SDAL is full!");
-            }
-            size_t curr_arr_length = this->end_index + 1;
-            T* new_arr = new T[2*curr_arr_length];
-
-            for(size_t i = 0, j = this->head; j != this->tail; i++,j = next_index(j)){
-                new_arr[i] = arr[j];
-            }
-            this->arr = new_arr;
-            this->tail = this->end_index;
-            this->arr[this->tail] = item;
-            this->end_index = 2*curr_arr_length-1;
-            this->tail = next_index(this->tail);
-            this->head = 0;
-            return;
-        }
-        this->arr[this->tail] = item;
-        this->tail = next_index(this->tail);
-        return;
-    }
-
-    T item_at(unsigned int position){
-        if(position < 0 || position >= length()){
-            throw std::runtime_error("Invalid input for position in T SDAL::item_at(unsigned int position)!");
-        }
-        if(position == 0){
-            return peek_front();
-        }
-        if(position == (length()-1)){
-            return peek_back();
-        }
-        int displacement = static_cast<int>(position);
-        size_t temp_head = this->head;
-        while(--displacement>=0)
-            temp_head = next_index(temp_head);
-        return arr[temp_head];
-    }
-
-    T* contents(){
-
-        if(length() == 0)
-            throw std::runtime_error("Can't return contents as SDAL is currently empty!");
-
-        T* result = new T[length()];
-
-        size_t traverse = this->head;
-        size_t count = 0;
-        while(traverse != this->tail){
-            result[count] = arr[traverse];
-            traverse = next_index(traverse);
-            count++;
-        }
-
-        return result;
-    }
-
-    T remove(unsigned int position){
-        if(position < 0 || position >= length()){
-            throw std::runtime_error("Invalid input for position in T SDAL:remove(unsigned int position)!");
-        }
-
-        if(position == 0){
-            return pop_front();
-        }
-        if((position + 1) == length()){
-            return pop_back();
-        }
-        size_t temp = this->head;
-        int cnt = static_cast<int>(position);
-        while(--cnt>=0){
-            temp = next_index(temp);
-        }
-
-
-        T result = arr[temp];
-        while(next_index(temp) != this->tail){
-            arr[temp] = arr[next_index(temp)];
-            temp = next_index(temp);
-        }
-        this->tail = temp;
-        return result;
-    }
-
-    bool contains(T element, bool (*fxn)(T,T)){
-        for(int i = this->head; i != this->tail; i = next_index(i)){
-            if(fxn(element,arr[i]))
-                return true;
-        }
-        return false;
-    }
-
-    void insert(T element, unsigned int position){
-        if(is_full()){
-            throw std::runtime_error("Can't push at front since SDAL is full!");
-        }
-        if(position < 0 || position >= (length()+1)){
-            throw std::runtime_error("Invalid input for position in void SDAL:insert(T element,unsigned int position)!");
-        }
-        if(position == 0){
-            push_front(element);
-            return;
-        }
-        if(position == length()){
-            push_back(element);
-            return;
-        }
-
-        if(reached_capacity()){
-            size_t curr_arr_length = this->end_index + 1;
-            T* new_arr = new T[2*curr_arr_length];
-
-            for(size_t i = 0, j = this->head; j != this->tail; i++,j = next_index(j)){
-                new_arr[i] = arr[j];
-            }
-            this->arr = new_arr;
-            this->head = 0;
-            this->tail = this->end_index;
-            this->end_index = 2*curr_arr_length-1;
-        }
-
-        int cnt = static_cast<int>(position);
-        size_t temp = this->head;
-
-        while(--cnt >= 0){
-            temp = next_index(temp);
-        }
-
-        T saveThis = arr[temp];
-        arr[temp] = element;
-
-        size_t temp_back = (this->tail);
-        while(temp_back != (temp)){
-            temp_back = prev_index(temp_back);
-            if(temp_back == temp){
-                arr[next_index(temp_back)] = saveThis;
-            }
-            else{
-                arr[next_index(temp_back)] = arr[(temp_back)];
+        T replace(const T& element, size_t position){
+            if(position < 0 || position >= length()){
+                throw std::runtime_error("Invalid input for position in T SDAL::replace(size_t position)!");
             }
 
+            T result = arr[position];
+            arr[position] = element;
+            return result;
         }
 
-        this->tail = next_index(this->tail);
-
-        return;
-    }
-
-    T replace(T element, unsigned int position){
-        if(position < 0 || position >= length()){
-            throw std::runtime_error("Invalid input for position in T SDAL::replace(unsigned int position)!");
+        static bool equals(const T& element, const T& test){
+            return (element == test);
         }
 
-        int displacement = static_cast<int>(position);
-        size_t temp_head = this->head;
-        while(--displacement>=0)
-            temp_head = next_index(temp_head);
-        T result = arr[temp_head];
-        arr[temp_head] = element;
-        return result;
-    }
-
-    static bool equals(T element, T test){
-        return (element == test);
-    }
-
-
-};
+    };
 }
 
 #endif //COP3530_PROJECT_1_SDAL_H

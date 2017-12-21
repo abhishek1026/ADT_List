@@ -7,12 +7,12 @@
 
 #include <iostream>
 #include <stdexcept>
-#include "ADT_List.h"
+#include "List.h"
 using namespace std;
 
 namespace cop3530{
     template <class T>
-    class PSLL: public ADT_LIST<T>{
+    class PSLL: public List<T>{
 
     private:
         struct Node {
@@ -26,6 +26,11 @@ namespace cop3530{
         NodePtr free = nullptr;
 
         void send_to_pool(NodePtr data){
+
+            if(grab_pool_length() >= 50){
+                delete data;
+                return;
+            }
             //cout << "Sending Node back to Pool!" << endl;
             if(this->free == nullptr){
                 this->free = data;
@@ -50,7 +55,6 @@ namespace cop3530{
                 if(!newNode){
                     throw std::runtime_error("Pool is empty and out of external memory!");
                 }
-                //cout << "Allocating more memory for new Node!" << endl;
                 return newNode;
             }
             NodePtr takeFree = this->free;
@@ -61,79 +65,80 @@ namespace cop3530{
         }
 
     public:
-        template<class DataT>
-        class PSLL_Iter: public  std::iterator<std::forward_iterator_tag,DataT>{
-        public:
+            template<class DataT>
+            class PSLL_Iter: public  std::iterator<std::forward_iterator_tag,DataT>{
+            public:
 
-            typedef DataT value_type;
-            typedef std::ptrdiff_t difference_type;
-            typedef DataT& reference;
-            typedef DataT* pointer;
-            typedef std::forward_iterator_tag iterator_category;
+                typedef DataT value_type;
+                typedef std::ptrdiff_t difference_type;
+                typedef DataT& reference;
+                typedef DataT* pointer;
+                typedef std::forward_iterator_tag iterator_category;
 
-            typedef PSLL_Iter self_type;
-            typedef PSLL_Iter& self_reference;
+                typedef PSLL_Iter self_type;
+                typedef PSLL_Iter& self_reference;
 
-        private:
-            Node* here;
+            private:
+                Node* here;
 
-        public:
-            explicit PSLL_Iter(Node* start = nullptr) {
-                here = start;
-            }
-            PSLL_Iter(const PSLL_Iter& src) {
-                here = src.here;
-            }
-
-            reference operator*() const {
-                if (!here) {
-                    throw std::logic_error("Can't evaluate at null node location!");
+            public:
+                explicit PSLL_Iter(Node* start = nullptr) {
+                    here = start;
                 }
-                return here->data;
-            }
 
-            pointer operator->() const {
-                if (!here) {
-                    throw std::logic_error("Can't use -> operator with a null node");
+                PSLL_Iter(const PSLL_Iter& src) {
+                    here = src.here;
                 }
-                return &(here->data);
-            }
 
-            self_reference operator=(PSLL_Iter<DataT>const& src) {
-                if(*this == src){
+                reference operator*() const {
+                    if (!here) {
+                        throw std::runtime_error("Can't evaluate (*) at null node location!");
+                    }
+                    return here->data;
+                }
+
+                pointer operator->() const {
+                    if (!here) {
+                        throw std::runtime_error("Can't use -> operator with a null node");
+                    }
+                    return &(operator*());
+                }
+
+                self_reference operator=(PSLL_Iter<DataT>const& src) {
+                    if(this == &src){
+                        return *this;
+                    }
+                    here = src.here;
                     return *this;
                 }
-                here = src.here;
-                return *this;
-            }
 
-            self_reference operator++() {
-                if (!here) {
-                    throw std::logic_error("Can't use ++(pre) operator at null position");
+                self_reference operator++() {
+                    if (!here) {
+                        throw std::runtime_error("Can't use ++(pre) operator at null position");
+                    }
+                    here = here->next;
+                    return *this;
                 }
-                here = here->next;
-                return *this;
-            }
 
-            self_type operator++(int) {
-                if (!here) {
-                    throw std::logic_error("Can't use ++(post) operator with a null node");
+                self_type operator++(int) {
+                    if (!here) {
+                        throw std::runtime_error("Can't use ++(post) operator with a null node");
+                    }
+                    PSLL_Iter<DataT> hold(*this);
+                    here = here->next;
+                    return hold;
                 }
-                PSLL_Iter<DataT> hold(*this);
-                here = here->next;
-                return hold;
-            }
 
-            bool operator==(PSLL_Iter<DataT>const& test) const {
-                return here == test.here;
-            }
+                bool operator==(PSLL_Iter<DataT>const& test) const {
+                    return here == test.here;
+                }
 
-            bool operator!=(PSLL_Iter<DataT>const& test) const {
-                return here != test.here;
-            }
-        };
+                bool operator!=(PSLL_Iter<DataT>const& test) const {
+                    return here != test.here;
+                }
+            };
 
-        typedef std::size_t size_t;
+        //typedef std::size_t size_t;
         typedef T value_type;
         typedef PSLL_Iter<T> iterator;
         typedef PSLL_Iter<T const> const_iterator;
@@ -154,27 +159,14 @@ namespace cop3530{
         }
 
         iterator grab(PSLL_Iter<T>& src){
-            return PSLL_Iter<T>(src);
+            return iterator(src);
         }
 
         PSLL(){
 
             cout << "Created a Pooled Singly Linked-List!!!" << endl;
 
-            this->free = new Node;
-
-            NodePtr temp = this->free;
-
-            int count = 50;
-
-            while(--count>0){
-                temp->next = new Node;
-                temp = temp->next;
-            }
-
-            temp->next = nullptr;
-
-            cout << "Created Pool!" << endl;
+            cout << "Created Empty Pool!" << endl;
 
         }
 
@@ -205,30 +197,29 @@ namespace cop3530{
         }
 
         PSLL(const PSLL& src) {
-            head = nullptr;
-            tail = nullptr;
             Node* temp = src.head;
-            head = temp;
-            if(temp == nullptr)
-                tail = head;
+
             while (temp) {
                 push_back(temp->data);
                 temp = temp->next;
             }
 
-            int count = src.grab_pool_length();
-            if(count > 0){
-                this->free = new Node;
-                temp = this->free;
-                while(--count>0){
-                    temp->next = new Node;
-                    temp = temp->next;
-                }
-                temp->next = nullptr;
-            }
+            cout << "Created Pooled Singly Linked-List (Copy CTR)!!!" << endl;
+            cout << "Created Empty Pool!!!" << endl;
 
-            cout << "Created Pooled Singly Linked-List!!!" << endl;
-            cout << "Created Pool!!!" << endl;
+        }
+
+        PSLL(PSLL&& src) {
+
+            this->head = src.head;
+            this->tail = src.tail;
+            this->free = src.free;
+
+            src.head = src.tail = src.free = nullptr;
+
+
+            cout << "Created Pooled Singly Linked-List (Move CTR)!!!" << endl;
+            cout << "Created Empty Pool!!!" << endl;
 
         }
 
@@ -238,25 +229,28 @@ namespace cop3530{
 
             clear();
 
-            int count = src.grab_pool_length();
-
-            if(count > 0){
-                this->free = new Node;
-                NodePtr temp = this->free;
-                while(--count>0){
-                    temp->next = new Node;
-                    temp = temp->next;
-                }
-                temp->next = nullptr;
-            }
-
-
             NodePtr temp = src.head;
 
             while (temp) {
                 push_back(temp->data);
                 temp = temp->next;
             }
+
+            return *this;
+
+        }
+
+        PSLL& operator=(PSLL&& src) {
+            if (&src == this)
+                return *this;
+
+            clear();
+
+            this->head = src.head;
+            this->tail = src.tail;
+            this->free = src.free;
+
+            src.head = src.tail = src.free = nullptr;
 
             return *this;
 
@@ -277,7 +271,19 @@ namespace cop3530{
             return temp->data;
         }
 
-        size_t length(){
+        T const& operator[](size_t position) const {
+            if (position < 0 || position >= length()) {
+                throw std::out_of_range("Array index out of bounds!");
+            }
+            Node* temp = head;
+            
+            for (size_t j = 0; j < position; j++) {
+                temp = temp->next;
+            }
+            return temp->data;
+        }
+
+        size_t length()const{
             if(this->head == nullptr){
                 return 0;
             }
@@ -291,11 +297,11 @@ namespace cop3530{
             return cnt;
         }
 
-        bool is_empty(){
+        bool is_empty()const{
             return (this->head == nullptr);
         }
 
-        bool is_full(){
+        bool is_full()const{
             NodePtr test = new(std::nothrow) Node;
             if(!test && grab_pool_length() == 0)
                 return true;
@@ -308,48 +314,47 @@ namespace cop3530{
 
             NodePtr temp = this->head;
 
-            while(temp!= NULL){
+            while(temp!= nullptr){
                 NodePtr thisOne = temp;
-                NodePtr nextNode = thisOne->next;
-                temp = nextNode;
-                send_to_pool(thisOne);
+                temp = temp->next;
+                delete thisOne;
             }
 
-            this->head = this->tail = NULL;
+            this->head = this->tail = nullptr;
 
             return;
         }
 
-        void print(ostream& stream){
+        std::ostream& print(std::ostream& stream)const{
             if(is_empty()){
-                stream << "<empty list>" << endl;
-                return;
+                stream << "<empty list>";
+                return stream;
             }
 
             NodePtr temp = this->head;
 
             stream << "[";
 
-            while(temp->next != NULL){
-                stream << temp->data << ", ";
+            while(temp->next != nullptr){
+                stream << temp->data << ",";
                 temp = temp->next;
             }
 
             stream << temp->data;
 
-            stream << "]" << endl;
+            stream << "]";
 
-            return;
+            return stream;
         }
 
-        T peek_back(){
+        T& peek_back()const{
             if(is_empty()){
                 throw std::runtime_error("ERROR: Can't peek at back of PSLL because PSLL is empty!!!");
             }
             return this->tail->data;
         }
 
-        T peek_front(){
+        T& peek_front()const{
             if(is_empty()){
                 throw std::runtime_error("ERROR: Can't peek at front of PSLL because PSLL is empty!!!");
             }
@@ -400,9 +405,9 @@ namespace cop3530{
             return result;
         }
 
-        void push_front(T item){
+        void push_front(const T& item){
             if(is_full()){
-                throw std::runtime_error("ERROR: Can't push at front of PSLL because PSSL is full!!!");
+                throw std::runtime_error("ERROR: Can't push at front of PSLL because PSLL is full!!!");
             }
             NodePtr newNode = grab_from_pool();
             newNode->data = item;
@@ -415,9 +420,9 @@ namespace cop3530{
 
         }
 
-        void push_back(T item){
+        void push_back(const T& item){
             if(is_full()){
-                throw std::runtime_error("ERROR: Can't push at back of PSLL because PSSL is full!!!");
+                throw std::runtime_error("ERROR: Can't push at back of PSLL because PSLL is full!!!");
             }
             NodePtr newNode = grab_from_pool();
             newNode->data = item;
@@ -432,9 +437,9 @@ namespace cop3530{
             return;
         }
 
-        T item_at(unsigned int position){
+        T& item_at(size_t position)const{
             if(position < 0 || position >= length()){
-                throw std::runtime_error("ERROR: Invalid Input for position in T PSLL::item_at(unsigned int position)!");
+                throw std::runtime_error("ERROR: Invalid Input for position in T PSLL::item_at(size_t position)!");
             }
 
             if(position == 0){
@@ -454,14 +459,12 @@ namespace cop3530{
 
         }
 
-        T* contents(){
-            if(is_empty()){
-                throw std::runtime_error("ERROR: Can't return contents because PSLL is empty!!!");
-            }
+        T* contents()const{
 
             T* arr = new T[length()];
             NodePtr temp = this->head;
-            for(int i = 0; i < length(); i++){
+            size_t len = length();
+            for(size_t i = 0; i < len; i++){
                 arr[i] = temp->data;
                 temp = temp->next;
             }
@@ -469,9 +472,9 @@ namespace cop3530{
             return arr;
         }
 
-        T remove(unsigned int position){
+        T remove(size_t position){
             if(position < 0 || position >= length()){
-                throw std::runtime_error("ERROR: Invalid input for position in T PSLL:remove(unsigned int position)!");
+                throw std::runtime_error("ERROR: Invalid input for position in T PSLL:remove(size_t position)!");
             }
 
             if(position == 0){
@@ -495,7 +498,7 @@ namespace cop3530{
             return result;
         }
 
-        bool contains(T element, bool (*equals)(T,T)){
+        bool contains(const T& element, bool (*equals)(const T&,const T&))const{
             if(is_empty()){
                 return false;
             }
@@ -512,9 +515,9 @@ namespace cop3530{
             return false;
         }
 
-        void insert(T element, unsigned int position){
+        void insert(const T& element, size_t position){
             if(position < 0 || position >= (length()+1)){
-                throw std::runtime_error("ERROR: Invalid input for position in void PSLL:insert(T element,unsigned int position)!");
+                throw std::runtime_error("ERROR: Invalid input for position in void PSLL:insert(T element,size_t position)!");
 
             }
             if(position == 0){
@@ -538,9 +541,9 @@ namespace cop3530{
             return;
         }
 
-        T replace(T element, unsigned int position){
+        T replace(const T& element, size_t position){
             if(position < 0 || position >= length()){
-                throw std::runtime_error("ERROR: Invalid Input for position in T PSLL:replace(T element,unsigned int position)!");
+                throw std::runtime_error("ERROR: Invalid Input for position in T PSLL:replace(T element,size_t position)!");
             }
             int cnt = static_cast<int>(position);
             NodePtr temp = head;
@@ -571,10 +574,11 @@ namespace cop3530{
             return result;
         }
 
-        static bool equals(T element, T compareValue){
+        static bool equals(const T& element, const T& compareValue){
             return (element == compareValue);
         }
 
     };
 }
+
 #endif //COP3530_PROJECT_1_PSLL_H

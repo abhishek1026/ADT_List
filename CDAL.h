@@ -5,14 +5,14 @@
 #ifndef COP3530_PROJECT_1_CDAL_H
 #define COP3530_PROJECT_1_CDAL_H
 
-#include "ADT_List.h"
+#include "List.h"
 #include <stdexcept>
 #include <iostream>
 using namespace std;
 
 namespace cop3530{
     template<class T>
-    class CDAL: public ADT_LIST<T>{
+    class CDAL: public List<T>{
     private:
 
         struct Node {
@@ -63,14 +63,14 @@ namespace cop3530{
 
             reference operator*() const {
                 if (curr_index == last_index) {
-                    throw std::logic_error("Can't evaluate at null location!");
+                    throw std::runtime_error("Can't evaluate (*) at null location!");
                 }
                 return curr_node->data[curr_index % arr_len];
             }
 
             pointer operator->() const {
                 if (curr_index == last_index) {
-                    throw std::logic_error("Can't use -> operator on a null location!");
+                    throw std::runtime_error("Can't use -> operator on a null location!");
                 }
                 return &(operator*());
             }
@@ -88,7 +88,7 @@ namespace cop3530{
 
             self_reference operator++() {
                 if (curr_index == last_index) {
-                    throw std::logic_error("Can't use ++(pre) operator at null position");
+                    throw std::runtime_error("Can't use ++(pre) operator at null position");
                 }
                 curr_index+= 1;
                 if(curr_index % arr_len == 0)
@@ -98,7 +98,7 @@ namespace cop3530{
 
             self_type operator++(int) {
                 if (curr_index == last_index) {
-                    throw std::logic_error("Can't use ++(post) operator with a null node");
+                    throw std::runtime_error("Can't use ++(post) operator with a null node");
                 }
                 CDAL_Iter<DataT> hold(*this);
                 curr_index+= 1;
@@ -116,7 +116,7 @@ namespace cop3530{
             }
         };
 
-        typedef std::size_t size_t;
+        //typedef std::size_t size_t;
         typedef T value_type;
         typedef CDAL_Iter<T> iterator;
         typedef CDAL_Iter<T const> const_iterator;
@@ -136,7 +136,7 @@ namespace cop3530{
             return const_iterator(tail_node,tail,tail,arr_length);
         }
 
-        iterator grab(CDAL_Iter<T>& src){
+        iterator grab(CDAL_Iter<T> const& src){
             return iterator(src);
         }
 
@@ -165,12 +165,116 @@ namespace cop3530{
 
             head_node = tail_node = nullptr;
 
-            this->tail = 0;
+            this->tail = this->arr_length = 0;
 
             cout << "Destroying Chained Dynamic ArrayList!!!" << endl;
         }
 
-        void push_back(T element){
+        CDAL(const CDAL & src){
+
+            NodePtr firstNode = new Node;
+            firstNode->data = new T[src.arr_length];
+            firstNode->next = nullptr;
+            head_node = tail_node = firstNode;
+
+            tail = 0;
+            arr_length = src.arr_length;
+
+            for(size_t i = 0; i < src.tail; i++){
+                push_back(src.item_at(i));
+            }
+
+            cout << "Created Chained Dynamic ArrayList (Copy CTR)!!!" << endl;
+
+        }
+
+        CDAL(CDAL&& src){
+
+            this->head_node = src.head_node;
+            this->tail_node = src.tail_node;
+            this->tail = src.tail;
+            this->arr_length = src.arr_length;
+
+            src.head_node = src.tail_node = nullptr;
+
+            src.tail = src.arr_length = 0;
+
+            cout << "Created Chained Dynamic ArrayList (Move CTR)!!!" << endl;
+
+        }
+
+        CDAL& operator=(const CDAL& src){
+            if(this == &src){
+                return *this;
+            }
+
+            clear();
+
+            delete [] head_node->data;
+            delete head_node;
+
+            NodePtr firstNode = new Node;
+            firstNode->data = new T[src.arr_length];
+            firstNode->next = nullptr;
+            head_node = tail_node = firstNode;
+
+            tail = 0;
+            arr_length = src.arr_length;
+
+            for(size_t i = 0; i < src.tail; i++){
+                push_back(src.item_at(i));
+            }
+
+            return *this;
+        }
+
+        CDAL& operator=(CDAL&& src){
+
+            if(this == &src){
+                return *this;
+            }
+
+            clear();
+
+            delete [] head_node->data;
+            delete head_node;
+
+            this->head_node = src.head_node;
+            this->tail_node = src.tail_node;
+            this->tail = src.tail;
+            this->arr_length = src.arr_length;
+
+            src.head_node = src.tail_node = nullptr;
+
+            src.tail = src.arr_length = 0;
+
+        }
+
+        T const& operator[](size_t position) const {
+            if (position < 0 || position >= length()) {
+                throw std::out_of_range("Array index out of bounds!");
+            }
+
+            T grab = item_at(position);
+
+            T& result = grab;
+
+            return result;
+        }
+
+        T& operator[](size_t position){
+            if (position < 0 || position >= length()) {
+                throw std::out_of_range("Array index out of bounds!");
+            }
+
+            T grab = item_at(position);
+
+            T& result = grab;
+
+            return result;
+        }
+
+        void push_back(const T& element){
             if(is_full() && ((this->tail + 1) % this->arr_length == 0))
                 throw std::runtime_error("Can't push at back of CDAL since it is full!");
             this->tail_node->data[this->tail % this->arr_length] = element;
@@ -182,13 +286,15 @@ namespace cop3530{
                 this->tail_node->next = newLastNode;
                 this->tail_node = newLastNode;
             }
+            
+            return;
 
         }
 
-        void print(ostream& stream){
+        std::ostream& print(std::ostream& stream)const{
             if(this->tail == 0){
-                stream << "<empty list>" << endl;
-                return;
+                stream << "<empty list>";
+                return stream;
             }
 
             stream << "[";
@@ -201,19 +307,19 @@ namespace cop3530{
                 if((i % arr_len == 0) && i > 0)
                     temp = temp->next;
                 if(i != (count - 1)){
-                    stream << temp->data[i % arr_len] << ", ";
+                    stream << temp->data[i % arr_len] << ",";
                 }
                 else{
-                    stream << temp->data[i % arr_len] << "]" << endl;
+                    stream << temp->data[i % arr_len] << "]";
                 }
             }
 
-            return;
+            return stream;
         }
 
-        T item_at(unsigned int position){
+        T& item_at(size_t position)const{
             if(position < 0 || position >= this->tail){
-                throw std::runtime_error("Error: Invalid input for position in T CDAL<T>::item_at(unsigned int position)!");
+                throw std::runtime_error("Error: Invalid input for position in T CDAL<T>::item_at(size_t position)!");
             }
             NodePtr temp = this->head_node;
             int test = static_cast<int>(position);
@@ -226,13 +332,13 @@ namespace cop3530{
             return temp->data[test];
         }
 
-        size_t length(){
+        size_t length() const{
             return this->tail;
         }
 
-        T replace(T element, unsigned int position){
+        T replace(const T& element, size_t position){
             if(position < 0 || position >= this->tail){
-                throw std::runtime_error("Error: Invalid input for position in T CDAL<T>::replace(T element, unsigned int position)!");
+                throw std::runtime_error("Error: Invalid input for position in T CDAL<T>::replace(T element, size_t position)!");
             }
             NodePtr temp = this->head_node;
             int test = static_cast<int>(position);
@@ -258,6 +364,7 @@ namespace cop3530{
                     temp = temp->next;
                 }
                 temp->next = nullptr;
+                delete [] this->tail_node->data;
                 delete this->tail_node;
                 this->tail_node = temp;
             }
@@ -270,11 +377,11 @@ namespace cop3530{
             return remove(0);
         }
 
-        bool is_empty(){
+        bool is_empty()const{
             return (this->tail == 0);
         }
 
-        bool is_full(){
+        bool is_full()const{
             T* test = new(std::nothrow) T[this->arr_length];
             if(!test)
                 return true;
@@ -283,7 +390,7 @@ namespace cop3530{
             return false;
         }
 
-        bool reached_capacity(){
+        bool reached_capacity()const{
             return ((this->tail) % this->arr_length == 0 && this->tail != 0);
         }
 
@@ -304,7 +411,7 @@ namespace cop3530{
             this->tail = 0;
         }
 
-        bool contains(T element, bool (*fxn)(T,T)){
+        bool contains(const T& element, bool (*fxn)(const T&,const T&))const{
 
             NodePtr temp = head_node;
             int count = static_cast<int>(this->tail);
@@ -319,7 +426,7 @@ namespace cop3530{
             return false;
         }
 
-        T* contents(){
+        T* contents()const{
             T* result = new T[length()];
 
             NodePtr temp = head_node;
@@ -334,11 +441,7 @@ namespace cop3530{
             return result;
         }
 
-        static bool equals(T element, T test){
-            return (element == test);
-        }
-
-        T peek_front(){
+        T& peek_front()const{
             if(is_empty()){
                 throw std::runtime_error("Can't peek at front of CDAL since it is empty!");
             }
@@ -346,7 +449,7 @@ namespace cop3530{
             return head_node->data[0];
         }
 
-        T peek_back(){
+        T& peek_back()const{
             if(is_empty()){
                 throw std::runtime_error("Can't peek at back of CDAL since it is empty!");
             }
@@ -362,9 +465,9 @@ namespace cop3530{
             return tail_node->data[(this->tail-1) % this->arr_length];
         }
 
-        T remove(unsigned int position){
+        T remove(size_t position){
             if(position < 0 || position >= this->tail){
-                throw std::runtime_error("Invalid input for position in T CDAL:remove(unsigned int position)!");
+                throw std::runtime_error("Invalid input for position in T CDAL:remove(size_t position)!");
             }
 
             if((position + 1) == this->tail){
@@ -387,7 +490,7 @@ namespace cop3530{
                 temp = temp->next;
             }
 
-            for(int i = position; i < this->tail; i++){
+            for(size_t i = position; i < this->tail; i++){
                 if((i+1) % this->arr_length == 0){
                     temp->data[i % this->arr_length] = temp->next->data[0];
                     temp = temp->next;
@@ -401,6 +504,7 @@ namespace cop3530{
                 NodePtr old_last = this->tail_node;
                 this->tail_node = temp;
                 this->tail_node->next = nullptr;
+                delete [] old_last->data;
                 delete old_last;
             }
 
@@ -408,13 +512,14 @@ namespace cop3530{
 
         }
 
-        void insert(T element, unsigned int position){
+        void insert(const T& element, size_t position){
             if(position < 0 || position >= (this->tail+1)){
-                throw std::runtime_error("Invalid input for position in T CDAL:insert(unsigned int position)!");
+                throw std::runtime_error("Invalid input for position in T CDAL:insert(size_t position)!");
             }
 
             if((position) == this->tail){
-                return push_back(element);
+                push_back(element);
+                return;
             }
 
             bool change_back = false;
@@ -479,15 +584,20 @@ namespace cop3530{
                 temp->next = new_last;
                 this->tail_node = new_last;
             }
+            
+            return;
 
 
         }
 
-        void push_front(T element){
+        void push_front(const T& element){
             insert(element,0);
             return;
         }
-
+        
+        static bool equals(const T& element, const T& test){
+            return (element == test);
+        }
 
     };
 }

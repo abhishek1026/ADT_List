@@ -2,23 +2,24 @@
 // Created by Abhishek on 9/8/2017.
 //
 
-#ifndef COP3530_PROJECT_1_SLL_H
-#define COP3530_PROJECT_1_SLL_H
+#ifndef COP3530_PROJECT_1_SSLL_H
+#define COP3530_PROJECT_1_SSLL_H
+
 #include <iostream>
 #include <stdexcept>
-#include "ADT_List.h"
+#include "List.h"
 using namespace std;
 
 namespace cop3530{
     template <class T>
-    class SLL: public ADT_LIST<T>{
+    class SSLL: public List<T>{
 
     private:
         struct Node {
             T data;
             Node *next;
         };
-        typedef struct Node *NodePtr;
+        typedef struct Node* NodePtr;
 
         NodePtr head = nullptr;
         NodePtr tail = nullptr;
@@ -26,7 +27,7 @@ namespace cop3530{
 
     public:
             template<class DataT>
-            class SSLL_Iter: public  std::iterator<std::forward_iterator_tag,DataT>{
+            class SSLL_Iter: public std::iterator<std::forward_iterator_tag,DataT>{
             public:
 
                 typedef DataT value_type;
@@ -51,20 +52,20 @@ namespace cop3530{
 
                 reference operator*() const {
                     if (!here) {
-                        throw std::logic_error("Can't evaluate at null node location!");
+                        throw std::runtime_error("Can't evaluate (*) at null node location!");
                     }
                     return here->data;
                 }
 
                 pointer operator->() const {
                     if (!here) {
-                        throw std::logic_error("Can't use -> operator with a null node");
+                        throw std::runtime_error("Can't use -> operator with a null node");
                     }
-                    return &(here->data);
+                    return &(operator*());
                 }
 
                 self_reference operator=(SSLL_Iter<DataT>const& src) {
-                    if (*this == src) {
+                    if (this == &src) {
                         return *this;
                     }
                     here = src.here;
@@ -73,7 +74,7 @@ namespace cop3530{
 
                 self_reference operator++() {
                     if (!here) {
-                        throw std::logic_error("Can't use ++(pre) operator at null position");
+                        throw std::runtime_error("Can't use ++(pre) operator at null position");
                     }
                     here = here->next;
                     return *this;
@@ -81,7 +82,7 @@ namespace cop3530{
 
                 self_type operator++(int) {
                     if (!here) {
-                        throw std::logic_error("Can't use ++(post) operator with a null node");
+                        throw std::runtime_error("Can't use ++(post) operator with a null node");
                     }
                     SSLL_Iter<DataT> hold(*this);
                     here = here->next;
@@ -97,7 +98,7 @@ namespace cop3530{
                 }
             };
 
-        typedef std::size_t size_t;
+        //typedef std::size_t size_t;
         typedef T value_type;
         typedef SSLL_Iter<T> iterator;
         typedef SSLL_Iter<T const> const_iterator;
@@ -117,19 +118,19 @@ namespace cop3530{
             return const_iterator();
         }
 
-        iterator grab(SSLL_Iter<T>& src){
-            return SSLL_Iter<T>(src);
+        iterator grab(SSLL_Iter<T>const& src){
+            return iterator(src);
         }
 
-        SLL(){
+        SSLL(){
 
             cout << "Created a Simple Singly Linked-List!!!" << endl;
 
         }
 
-        SLL(const SLL& src) {
+        SSLL(const SSLL& src) {
 
-            cout << "Created a Simple Singly Linked-List!!!" << endl;
+            cout << "Created a Simple Singly Linked-List (Copy CTR)!!!" << endl;
 
             head = nullptr;
             tail = nullptr;
@@ -138,9 +139,10 @@ namespace cop3530{
                 push_back(temp->data);
                 temp = temp->next;
             }
+
         }
 
-        ~SLL(){
+        ~SSLL(){
 
             cout << "Destroying Simple Singly Linked-List!!!" << endl;
 
@@ -156,11 +158,13 @@ namespace cop3530{
 
         }
 
-        SLL& operator=(const SLL& src) {
+        SSLL& operator=(const SSLL& src) {
+			
             if (&src == this)
                 return *this;
 
             clear();
+            
             Node* temp = src.head;
             while (temp) {
                 push_back(temp->data);
@@ -170,13 +174,43 @@ namespace cop3530{
 
         }
 
+        SSLL& operator=(SSLL&& src) {
+
+            if (&src == this)
+                return *this;
+
+            clear();
+
+            this->head = src.head;
+            this->tail = src.tail;
+
+            src.head = nullptr;
+            src.tail = nullptr;
+
+            return *this;
+
+        }
+
+        SSLL(SSLL&& src) {
+
+            cout << "Created a Simple Singly Linked-List (Move CTR)!!!" << endl;
+
+            this->head = src.head;
+            this->tail = src.tail;
+
+            src.head = nullptr;
+            src.tail = nullptr;
+
+
+        }
+
         T& operator[](size_t position) {
             if (position < 0 || position >= length()) {
                 throw std::out_of_range("Array index out of bounds!");
             }
             Node* temp = head;
 
-            int cnt = position;
+            int cnt = static_cast<int>(position);
 
             while(--cnt >= 0){
                 temp = temp->next;
@@ -185,7 +219,18 @@ namespace cop3530{
             return temp->data;
         }
 
-        size_t length(){
+        T const& operator[](size_t position) const {
+            if (position < 0 || position >= length()) {
+                throw std::out_of_range("Array index out of bounds!");
+            }
+            Node* temp = head;
+            for (size_t j = 0; j < position; j++) {
+                temp = temp->next;
+            }
+            return temp->data;
+        }
+
+        size_t length() const {
             if(this->head == nullptr){
                 return 0;
             }
@@ -199,11 +244,11 @@ namespace cop3530{
             return cnt;
         }
 
-        bool is_empty(){
+        bool is_empty()const{
             return (this->head == nullptr);
         }
 
-        bool is_full(){
+        bool is_full()const{
             NodePtr test = new(std::nothrow) Node;
             if(!test)
                 return true;
@@ -216,54 +261,54 @@ namespace cop3530{
 
             NodePtr temp = this->head;
 
-            while(temp!= NULL){
+            while(temp!= nullptr){
                 NodePtr deleteThis = temp;
                 temp = deleteThis->next;
                 delete  deleteThis;
             }
 
-            this->head = this->tail = NULL;
+            this->head = this->tail = nullptr;
 
             return;
         }
 
-        void print(ostream& stream){
+        std::ostream& print(std::ostream& stream)const{
             if(is_empty()){
-                stream << "<empty list>" << endl;
-                return;
+                stream << "<empty list>";
+                return stream;
             }
 
             NodePtr temp = this->head;
 
             stream << "[";
 
-            while(temp->next != NULL){
-                stream << temp->data << ", ";
+            while(temp->next != nullptr){
+                stream << temp->data << ",";
                 temp = temp->next;
             }
 
-            stream << temp->data << "]" << endl;
+            stream << temp->data << "]";
 
-            return;
+            return stream;
         }
 
-        T peek_back(){
+        T& peek_back()const{
             if(is_empty()){
-                throw std::runtime_error("ERROR: Can't peek at back of SLL because SLL is empty!!!");
+                throw std::runtime_error("ERROR: Can't peek at back of SSLL because SSLL is empty!!!");
             }
             return this->tail->data;
         }
 
-        T peek_front(){
+        T& peek_front()const{
             if(is_empty()){
-                throw std::runtime_error("ERROR: Can't peek at front of SLL because SLL is empty!!!");
+                throw std::runtime_error("ERROR: Can't peek at front of SSLL because SSLL is empty!!!");
             }
             return this->head->data;
         }
 
         T pop_back(){
             if(is_empty()){
-                throw std::runtime_error("ERROR: Can't pop at back of SLL because SLL is empty!!!");
+                throw std::runtime_error("ERROR: Can't pop at back of SSLL because SSLL is empty!!!");
             }
 
             if(length() == 1){
@@ -292,7 +337,7 @@ namespace cop3530{
         T pop_front(){
 
             if(is_empty()){
-                throw std::runtime_error("ERROR: Can't pop at front of SLL because SLL is empty!!!");
+                throw std::runtime_error("ERROR: Can't pop at front of SSLL because SSLL is empty!!!");
             }
             if(length() == 1){
                 this->tail = nullptr;
@@ -304,9 +349,9 @@ namespace cop3530{
             return result;
         }
 
-        void push_front(T item){
+        void push_front(const T& item){
             if(is_full()){
-                throw std::runtime_error("ERROR: Can't push at front of SLL because SSL is full!!!");
+                throw std::runtime_error("ERROR: Can't push at front of SSLL because SSLL is full!!!");
             }
             NodePtr newNode = new Node;
             newNode->data = item;
@@ -319,9 +364,9 @@ namespace cop3530{
 
         }
 
-        void push_back(T item){
+        void push_back(const T& item){
             if(is_full()){
-                throw std::runtime_error("ERROR: Can't push at back of SLL because SSL is full!!!");
+                throw std::runtime_error("ERROR: Can't push at back of SSLL because SSLL is full!!!");
             }
             NodePtr newNode = new Node;
             newNode->data = item;
@@ -336,9 +381,9 @@ namespace cop3530{
             return;
         }
 
-        T item_at(unsigned int position){
+        T& item_at(size_t position)const{
             if(position < 0 || position >= length()){
-                throw std::runtime_error("ERROR: Invalid Input for position in T SLL::item_at(unsigned int position)!!!");
+                throw std::runtime_error("ERROR: Invalid Input for position in T SSLL::item_at(size_t position)!!!");
             }
 
             if(position == 0){
@@ -358,14 +403,12 @@ namespace cop3530{
 
         }
 
-        T* contents(){
-            if(is_empty()){
-                throw std::runtime_error("ERROR: Can't return contents because SLL is empty!!!");
-            }
+        T* contents()const{
 
             T* arr = new T[length()];
             NodePtr temp = this->head;
-            for(int i = 0; i < length(); i++){
+            size_t len = length();
+            for(size_t i = 0; i < len; i++){
                 arr[i] = temp->data;
                 temp = temp->next;
             }
@@ -373,9 +416,9 @@ namespace cop3530{
             return arr;
         }
 
-        T remove(unsigned int position){
+        T remove(size_t position){
             if(position < 0 || position >= length()){
-                throw std::runtime_error("ERROR: Invalid input for position in T SLL:remove(unsigned int position)!!!");
+                throw std::runtime_error("ERROR: Invalid input for position in T SSLL:remove(size_t position)!!!");
             }
 
             if(position == 0){
@@ -399,7 +442,7 @@ namespace cop3530{
             return result;
         }
 
-        bool contains(T element, bool (*equals)(T,T)){
+        bool contains(const T& element, bool (*equals)(const T&,const T&))const{
             if(is_empty()){
                 return false;
             }
@@ -416,9 +459,9 @@ namespace cop3530{
             return false;
         }
 
-        void insert(T element, unsigned int position){
+        void insert(const T& element, size_t position){
             if(position < 0 || position >= (length()+1)){
-                throw std::runtime_error("ERROR: Invalid input for position in void SLL:insert(T element,unsigned int position)!!!");
+                throw std::runtime_error("ERROR: Invalid input for position in void SSLL:insert(T element,size_t position)!!!");
 
             }
             if(position == 0){
@@ -434,6 +477,7 @@ namespace cop3530{
             while(--cnt > 0){
                 temp = temp->next;
             }
+
             NodePtr newNode = new(std::nothrow) Node;
             if(!newNode)
                 return;
@@ -445,9 +489,9 @@ namespace cop3530{
             return;
         }
 
-        T replace(T element, unsigned int position){
+        T replace(const T& element, size_t position){
             if(position < 0 || position >= length()){
-                throw std::runtime_error("ERROR: Invalid Input for position in T SLL:replace(T element,unsigned int position)!!!");
+                throw std::runtime_error("ERROR: Invalid Input for position in T SSLL:replace(T element,size_t position)!!!");
             }
             int cnt = static_cast<int>(position);
             NodePtr temp = this->head;
@@ -461,15 +505,11 @@ namespace cop3530{
             return result;
         }
 
-        static bool equals(T element, T test){
+        static bool equals(const T& element, const T& test){
             return (element == test);
         }
-
-
 
     };
 
 }
-
-
-#endif //COP3530_PROJECT_1_SLL_H
+#endif //COP3530_PROJECT_1_SSLL_H
